@@ -51,7 +51,7 @@ public class AppService {
     private String userName;
     @Value("${apk.dir.password}")
     private String password;
-    private String privateKey = "/Users/a10150541/Desktop/MetaServer/apkmanagement/genieStoreKey.pem";
+    private String privateKey = "/Users/a10150541/Desktop/MetaServer/apkmanagement/GenieStoreKey.pem";
     private static final Logger logger = LoggerFactory.getLogger(AppService.class);
 
     @Value("${cloud.aws.s3.bucket}")
