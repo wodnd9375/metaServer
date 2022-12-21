@@ -86,12 +86,13 @@ public class AppService {
         return AllAppResponse;
     }
 
-    public List<String> discoveryClient () {
+    public List<ServerInfo> discoveryClient () {
         List<ServiceInstance> instances = discoveryClient.getInstances("remote-repo");
-        List<String> serverInfo = new ArrayList<>();
+        List<ServerInfo> serverInfo = new ArrayList<>();
 
         for(ServiceInstance instance : instances) {
-            serverInfo.add(instance.getHost());
+            serverInfo.add(new ServerInfo(instance.getHost(), instance.getPort()));
+//            serverInfo.add(instance.getHost());
         }
 
         return serverInfo;
@@ -145,10 +146,11 @@ public class AppService {
         String bannerPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "banner" + "/";
         String screenPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "screenshot" + "/";
 
-        for(String server : discoveryClient()) {
-            logger.info("server info : " + server);
+
+        for(ServerInfo serverInfo : discoveryClient()) {
+            logger.info("server info : " + serverInfo.getHost());
             try {
-                fileUtils.init(server, userName, null, 22, privateKey);
+                fileUtils.init(serverInfo.getHost(), userName, null, 22, privateKey);
 
                 fileUtils.upload(dir, appPath, mfile);
                 fileUtils.upload(dir, iconPath, iconFile);

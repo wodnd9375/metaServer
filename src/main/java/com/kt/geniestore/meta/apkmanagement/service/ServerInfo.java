@@ -10,4 +10,6 @@ import lombok.Setter;
 public class ServerInfo {
     private String host;
     private int port;
+
+
 }

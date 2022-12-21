@@ -6,6 +6,7 @@ import com.kt.geniestore.meta.apkmanagement.common.response.DownloadListResponse
 import com.kt.geniestore.meta.apkmanagement.dto.AppDTO;
 import com.kt.geniestore.meta.apkmanagement.entity.DeveloperInfo;
 import com.kt.geniestore.meta.apkmanagement.service.AppService;
+import com.kt.geniestore.meta.apkmanagement.service.ServerInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -56,7 +57,7 @@ public class AppRestController {
     public ResponseEntity getDownloadList() {
 
         CommonResponse response;
-        List<String> serverInfo;
+        List<ServerInfo> serverInfo;
         DownloadListResponse downloadListResponse = new DownloadListResponse();
 
         serverInfo = appService.discoveryClient();
