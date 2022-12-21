@@ -1,7 +1,6 @@
 package com.kt.geniestore.meta.apkmanagement.service;
 
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.kt.geniestore.meta.apkmanagement.Exception.DuplicateAppException;
 import com.kt.geniestore.meta.apkmanagement.common.response.AllAppResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.AppDownloadResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.AppsResponse;
@@ -20,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.xml.bind.DatatypeConverter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -34,7 +32,7 @@ import java.util.Optional;
 public class AppService {
 
     //    private final WebClient webClient;
-    private final AmazonS3Client amazonS3Client;
+//    private final AmazonS3Client amazonS3Client;
     private final AppRepository appRepository;
     private final AppVersionRepository appVersionRepository;
     private final AppCategoryMapRepository appCategoryMapRepository;
@@ -49,16 +47,12 @@ public class AppService {
     private String dir;
     @Value("${apk.dir.userName}")
     private String userName;
-    @Value("${apk.dir.password}")
-    private String password;
-    private String privateKey = "/Users/a10150541/Desktop/MetaServer/apkmanagement/GenieStoreKey.pem";
+    @Value("${cloud.aws.ec2.key}")
+    private String privateKey;
     private static final Logger logger = LoggerFactory.getLogger(AppService.class);
 
-    @Value("${cloud.aws.s3.bucket}")
-    private String bucketName;
 
     public AllAppResponse getAllApps() {
-
         AllAppResponse AllAppResponse = new AllAppResponse();
         List<AppsResponse> responseList = new ArrayList<>();
         List<App> apps = appRepository.findAll();
@@ -97,7 +91,6 @@ public class AppService {
         List<String> serverInfo = new ArrayList<>();
 
         for(ServiceInstance instance : instances) {
-//            serverInfo.add(instance.getUri().toString());
             serverInfo.add(instance.getHost());
         }
 
@@ -105,88 +98,54 @@ public class AppService {
     }
 
     @Transactional
-    public boolean uploadComponent(MultipartFile mfile, MultipartFile iconFile, MultipartFile bannerFile, List<MultipartFile> screenshots, AppDTO appDTO) throws IOException {
-
-        String appName = appDTO.getAppName();
-        String packageName = appDTO.getPackageName();
-        String versionName = appDTO.getVersionName();
-        long versionCode = appDTO.getVersionCode();
-        String appType = appDTO.getAppType();
-        String hasAds = appDTO.getHasAds();
-        String limitedAge = appDTO.getLimitedAge();
-        String description = appDTO.getDescription();
-        List<String> categories = appDTO.getCategories();
-        String company = appDTO.getCompany();
-        String developerName = appDTO.getDeveloperName();
-        String phone = appDTO.getPhone();
-        String webSite = appDTO.getWebSite();
-        String email = appDTO.getEmail();
+    public void uploadApp(MultipartFile uploadFile, MultipartFile iconFile, MultipartFile bannerFile, List<MultipartFile> screenshots, AppDTO appDTO, DeveloperInfo developerInfo) throws Exception {
 
         //  DB 중복 체크 - 중복 조건 : packaName + versionCode + versionName
-        App app = appRepository.findByPackageName(packageName);
+        App app = appRepository.findByPackageName(appDTO.getPackageName());
 
         if(app != null) {
-            if(checkDuplicateVersion(app, versionName, versionCode)) {
-                return false;
+            if(checkDuplicateVersion(app, appDTO.getVersionName(), appDTO.getVersionCode())) {
+                throw new DuplicateAppException();
             }
         }
 
+        String checksum = toHex(checksum(uploadFile.getInputStream()));
 
-        String originalName = mfile.getName();
-        String path = appName + "/" + versionCode + "/" + originalName;
-        String checksum = toHex(checksum(mfile.getInputStream()));
-
-        ObjectMetadata objectMetaData = new ObjectMetadata();
-        objectMetaData.setContentType(mfile.getContentType());
-        objectMetaData.setContentLength(mfile.getSize());
-
-        // S3 저장
-//        try (InputStream inputStream = mfile.getInputStream()) {
-//            amazonS3Client.putObject(new PutObjectRequest(bucketName, path, inputStream, objectMetaData)
-//                    .withCannedAcl(CannedAccessControlList.PublicRead));
-//        } catch (IOException e) {
-//            return false;
-//        }
-
-        // EC2 저장
-        List<String> serverInfoList = discoveryClient();
         try {
-            uploadEC2(mfile, appName, packageName, versionName, versionCode, serverInfoList, iconFile, bannerFile, screenshots);
+            uploadRepo(uploadFile, iconFile, bannerFile, screenshots, appDTO);
         } catch(Exception e) {
-            return false;
+
         }
 
-
-        List<String> screen = new ArrayList<>();
+        List<String> uploadSceeenshots = new ArrayList<>();
         for(MultipartFile screenshot : screenshots) {
-            screen.add(screenshot.getOriginalFilename());
+            uploadSceeenshots.add(screenshot.getOriginalFilename());
         }
         // App DB 저장
-        App uploadApp = saveApp(appName, packageName, appType, hasAds, limitedAge, description, versionName, versionCode, mfile.getOriginalFilename(), checksum,
-                iconFile.getOriginalFilename(), bannerFile.getOriginalFilename(), screen);
-
+        App uploadApp = saveApp(appDTO, uploadFile.getOriginalFilename(), checksum, iconFile.getOriginalFilename(), bannerFile.getOriginalFilename(), uploadSceeenshots, userName);
 
         // AppCategoryMap DB 저장
+        List<String> categories = appDTO.getCategories();
         saveAppCategory(categories, uploadApp);
 
-        // Developer DB 저장
-        saveDeveloper(company, developerName, phone, webSite, email, uploadApp);
+        saveDeveloper(developerInfo, app);
+    }
 
-        return true;
+    @Transactional
+    public void updateApp() {
+
     }
 
 
-    public boolean uploadEC2(MultipartFile mfile, String appName, String packageName, String versionName, Long versionCode, List<String> serverInfoList,
-                             MultipartFile iconFile,
-                             MultipartFile bannerFile,
-                             List<MultipartFile> screenshots) {
+    public boolean uploadRepo(MultipartFile mfile, MultipartFile iconFile, MultipartFile bannerFile,
+                             List<MultipartFile> screenshots, AppDTO appDTO) {
 
-        String appPath = "/" + appName + "/" + versionCode + "/" + "app" + "/";
-        String iconPath = "/" + appName + "/" + versionCode + "/" + "icon" + "/";
-        String bannerPath = "/" + appName + "/" + versionCode + "/" + "banner" + "/";
-        String screenPath = "/" + appName + "/" + versionCode + "/" + "screenshot" + "/";
+        String appPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "app" + "/";
+        String iconPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "icon" + "/";
+        String bannerPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "banner" + "/";
+        String screenPath = "/" + appDTO.getAppName() + "/" + appDTO.getVersionCode() + "/" + "screenshot" + "/";
 
-        for(String server : serverInfoList) {
+        for(String server : discoveryClient()) {
             logger.info("server info : " + server);
             try {
                 fileUtils.init(server, userName, null, 22, privateKey);
@@ -209,32 +168,80 @@ public class AppService {
         return true;
     }
 
-    public AppDownloadResponse getDownloadInfo(String packageName, String versionName, Long versionCode, String trxId) {
-        AppDownloadResponse response = new AppDownloadResponse();
+    private boolean checkDuplicateVersion(App app, String versionName, Long versionCode) {
+        List<AppVersion> versions = appVersionRepository.findByApp(app);
+        for(AppVersion av : versions) {
+            if(av.getVersionCode().equals(versionCode) && av.getVersionName().equals(versionName)) {
+                // todo : response 정의 (버전 중복)
+                logger.info("duplicate Version...");
+                return true;
+            }
+        }
+        return false;
+    }
 
-        List<String> urlList = new ArrayList<>();
+    @Transactional(rollbackFor = Exception.class)
+    public App saveApp(AppDTO appDTO, String fileName, String checksum,
+                        String iconFileName, String bannerFileName, List<String> screenshots, String userName) {
+        List<AppVersion> versions = new ArrayList<>();
 
-//        App app = appRepository.findByPackageName(packageName);
-//        if(app != null) {
-//            if (versionName != null && versionCode != null) {
-//                List<AppVersion> versions = appVersionRepository.findByApp(app);
-//                AppVersion targetVersion = versions.get(0);
-//
-//                urlList.add(targetVersion.getUrl());
-//                targetVersion.setDownloadUrl(urlList);
-//                targetVersion.setDownloadUrl(urlList);
-//                response.setAppVersion(targetVersion);
-//
-//            } else {
-//                AppVersion targetVersion = app.getVersions().get(app.getVersions().size() - 1);
-//                urlList.add(targetVersion.getUrl());
-//                targetVersion.setDownloadUrl(urlList);
-//                response.setAppVersion(targetVersion);
-//            }
-//        }
-//        response.setTrxid(trxId);
+        App app = new App();
+        app.setAppName(appDTO.getAppName());
+        app.setPackageName(appDTO.getPackageName());
+        app.setAppType(appDTO.getAppType());
+        app.setHasAds(appDTO.getHasAds());
+        app.setLimitedAge(appDTO.getLimitedAge());
+        app.setDescription(appDTO.getDescription());
 
-        return response;
+        AppVersion appVersion = AppVersion.builder()
+                .versionName(appDTO.getVersionName())
+                .versionCode(appDTO.getVersionCode())
+                .fileName(fileName)
+                .checksum(checksum)
+                .regTime(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
+                .app(app)
+                .build();
+
+        versions.add(appVersion);
+        app.setVersions(versions);
+
+        app.setIconFile(iconFileName);
+        app.setBannerFile(bannerFileName);
+        app.setScreenshots(screenshots);
+
+        appRepository.save(app);
+
+        return app;
+
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void saveAppCategory(List<String> categories, App app) {
+        for (String category : categories) {
+            Category existsCategory = categoryRepository.findByCategory(category);
+            if (existsCategory != null) {
+                AppCategoryMap appCategoryMap = AppCategoryMap.builder()
+                        .app(app)
+                        .category(existsCategory)
+                        .build();
+                appCategoryMapRepository.save(appCategoryMap);
+            } else {
+
+            }
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void saveDeveloper(DeveloperInfo developerInfo, App app) {
+        Developer developer = Developer.builder()
+                .company(developerInfo.getCompany())
+                .developerName(developerInfo.getName())
+                .phone(developerInfo.getPhone())
+                .email(developerInfo.getEmail())
+                .app(app)
+                .build();
+
+        developerRepository.save(developer);
     }
 
     private String toHex(byte[] bytes){
@@ -255,83 +262,4 @@ public class AppService {
         }
         return null;
     }
-
-    private boolean checkDuplicateVersion(App app, String versionName, Long versionCode) {
-        List<AppVersion> versions = appVersionRepository.findByApp(app);
-        for(AppVersion av : versions) {
-            if(av.getVersionCode().equals(versionCode) && av.getVersionName().equals(versionName)) {
-                // todo : response 정의 (버전 중복)
-                logger.info("duplicate Version...");
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Transactional
-    public App saveApp(String appName, String packageName, String appType, String hasAds, String limitedAge, String description, String versionName, Long versionCode, String fileName, String checksum,
-                        String iconFileName, String bannerFileName, List<String> screenshots) {
-        List<AppVersion> versions = new ArrayList<>();
-
-        App app = new App();
-        app.setAppName(appName);
-        app.setPackageName(packageName);
-        app.setAppType(appType);
-        app.setHasAds(hasAds);
-        app.setLimitedAge(limitedAge);
-        app.setDescription(description);
-
-        AppVersion appVersion = AppVersion.builder()
-                .versionName(versionName)
-                .versionCode(versionCode)
-                .fileName(fileName)
-                .checksum(checksum)
-                .regTime(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
-                .app(app)
-                .build();
-
-        versions.add(appVersion);
-        app.setVersions(versions);
-
-        app.setIconFile(iconFileName);
-        app.setBannerFile(bannerFileName);
-        app.setScreenshots(screenshots);
-
-        appRepository.save(app);
-
-        return app;
-
-    }
-
-    @Transactional
-    public void saveAppCategory(List<String> categories, App app) {
-        for (String category : categories) {
-            Category existsCategory = categoryRepository.findByCategory(category);
-            if (existsCategory != null) {
-                AppCategoryMap appCategoryMap = AppCategoryMap.builder()
-                        .app(app)
-                        .category(existsCategory)
-                        .build();
-                appCategoryMapRepository.save(appCategoryMap);
-            } else {
-                // todo : 카테고리 오류 예외처리
-
-            }
-        }
-    }
-
-    @Transactional
-    public void saveDeveloper(String company, String developerName, String phone, String webSite, String email, App app) {
-        Developer developer = Developer.builder()
-                .company(company)
-                .developerName(developerName)
-                .phone(phone)
-                .webSite(webSite)
-                .email(email)
-                .app(app)
-                .build();
-
-        developerRepository.save(developer);
-    }
-
 }

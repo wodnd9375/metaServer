@@ -26,7 +26,6 @@ public class Developer {
     @JsonProperty("name")
     private String developerName;
     private String phone;
-    private String webSite;
     private String email;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -35,11 +34,10 @@ public class Developer {
     private App app;
 
     @Builder
-    public Developer(String company, String developerName, String phone, String webSite, String email, App app) {
+    public Developer(String company, String developerName, String phone, String email, App app) {
         this.company = company;
         this.developerName = developerName;
         this.phone = phone;
-        this.webSite = webSite;
         this.email = email;
         this.app = app;
     }

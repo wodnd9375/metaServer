@@ -26,6 +26,8 @@ public class App {
     private String appType;
     private String limitedAge;
     private String hasAds;
+
+    @Column(length = 1000)
     private String description;
 
     private String iconFile;
@@ -37,13 +39,13 @@ public class App {
     @Column(name = "package_name")
     private String packageName;
 
-
     @JsonIgnore
     @OneToMany(mappedBy = "app", cascade = CascadeType.ALL)
     private List<AppVersion> versions = new ArrayList<>();
 
     @Transient
     private List<String> categories = new ArrayList<>();
+
 
     @Builder
     public App(String appName, String appType, String limitedAge, String hasAds, String description, String packageName, List<AppVersion> versions,

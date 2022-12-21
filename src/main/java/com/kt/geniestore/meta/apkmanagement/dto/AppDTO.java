@@ -17,9 +17,4 @@ public class AppDTO {
     private String limitedAge;
     private String description;
     private List<String> categories;
-    private String company;
-    private String developerName;
-    private String phone;
-    private String webSite;
-    private String email;
 }

@@ -1,24 +1,21 @@
 package com.kt.geniestore.meta.apkmanagement.controller;
 
-import com.kt.geniestore.meta.apkmanagement.common.CustomException;
-import com.kt.geniestore.meta.apkmanagement.common.request.AppDownloadRequest;
 import com.kt.geniestore.meta.apkmanagement.common.response.AllAppResponse;
-import com.kt.geniestore.meta.apkmanagement.common.response.AppDownloadResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.CommonResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.DownloadListResponse;
 import com.kt.geniestore.meta.apkmanagement.dto.AppDTO;
+import com.kt.geniestore.meta.apkmanagement.entity.DeveloperInfo;
 import com.kt.geniestore.meta.apkmanagement.service.AppService;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -28,40 +25,38 @@ public class AppRestController {
 
     private final AppService appService;
 
-    private static final Logger logger = LoggerFactory.getLogger(AppRestController.class);
-
     @PostMapping(value = "/app/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CommonResponse> uploadComponent(@RequestPart MultipartFile file,
-                                                          @RequestPart MultipartFile iconFile,
-                                                          @RequestPart MultipartFile bannerFile,
-                                                          @RequestPart List<MultipartFile> screenshot,
-                                                          @RequestPart AppDTO appDTO) throws IOException, CustomException {
+    public ResponseEntity<CommonResponse> uploadApp(@RequestPart MultipartFile uploadFile,
+                                                    @RequestPart MultipartFile iconFile,
+                                                    @RequestPart MultipartFile bannerFile,
+                                                    @RequestPart List<MultipartFile> screenshot,
+                                                    @RequestPart AppDTO appDTO,
+                                                    @RequestPart("DeveloperInfo") DeveloperInfo developerInfo) throws Exception {
 
         CommonResponse response = new CommonResponse();
 
-        appService.uploadComponent(file, iconFile, bannerFile, screenshot, appDTO);
 
-        return new ResponseEntity<CommonResponse>(response, HttpStatus.OK);
+        appService.uploadApp(uploadFile, iconFile, bannerFile, screenshot, appDTO, developerInfo);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping(value = "/app/download")
-    public ResponseEntity downloadComponent(@ModelAttribute AppDownloadRequest downloadReq,
-                                            @RequestParam(required = false) String versionName,
-                                            @RequestParam(required = false) Long versionCode) {
+    @PostMapping(value = "/app/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CommonResponse> updateApp(@RequestPart MultipartFile uploadFile,
+                                                          @RequestPart AppDTO appDTO) throws Exception {
 
-        CommonResponse response = null;
+        CommonResponse response = new CommonResponse();
 
-//        AppDownloadResponse downloadResponse = appService.getDownloadUrl(downloadReq.getPackageName(), versionName, versionCode, downloadReq.getTrxId());
-//        response = downloadResponse;
+        appService.updateApp();
 
-        return new ResponseEntity<CommonResponse>(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping(value="/app/server")
     public ResponseEntity getDownloadList() {
 
-        CommonResponse response = null;
-        List<String> serverInfo = new ArrayList<>();
+        CommonResponse response;
+        List<String> serverInfo;
         DownloadListResponse downloadListResponse = new DownloadListResponse();
 
         serverInfo = appService.discoveryClient();
@@ -74,8 +69,8 @@ public class AppRestController {
     @GetMapping(value="/app")
     public ResponseEntity getAppsInfo() {
 
-        CommonResponse response = null;
-        AllAppResponse appResponse = null;
+        CommonResponse response;
+        AllAppResponse appResponse;
 
         appResponse = appService.getAllApps();
 
