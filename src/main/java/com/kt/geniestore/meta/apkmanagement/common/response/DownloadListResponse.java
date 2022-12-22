@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class DownloadListResponse extends CommonResponse {
+public class DownloadListResponse {
     private List<ServerInfo> serverInfo;
 }
 

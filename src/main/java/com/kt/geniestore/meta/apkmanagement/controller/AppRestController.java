@@ -3,6 +3,7 @@ package com.kt.geniestore.meta.apkmanagement.controller;
 import com.kt.geniestore.meta.apkmanagement.common.response.AllAppResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.CommonResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.DownloadListResponse;
+import com.kt.geniestore.meta.apkmanagement.common.response.Response;
 import com.kt.geniestore.meta.apkmanagement.dto.AppDTO;
 import com.kt.geniestore.meta.apkmanagement.entity.DeveloperInfo;
 import com.kt.geniestore.meta.apkmanagement.service.AppService;
@@ -45,7 +46,6 @@ public class AppRestController {
     @PostMapping(value = "/app/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse> updateApp(@RequestPart MultipartFile uploadFile,
                                                           @RequestPart AppDTO appDTO) throws Exception {
-
         CommonResponse response = new CommonResponse();
 
         appService.updateApp();
@@ -56,26 +56,32 @@ public class AppRestController {
     @GetMapping(value="/app/server")
     public ResponseEntity getDownloadList() {
 
-        CommonResponse response;
+        CommonResponse commonResponse = new CommonResponse();
         List<ServerInfo> serverInfo;
         DownloadListResponse downloadListResponse = new DownloadListResponse();
+        Response response  = new Response();
 
         serverInfo = appService.discoveryClient();
         downloadListResponse.setServerInfo(serverInfo);
-        response = downloadListResponse;
+        response.setCommonResponse(commonResponse);
+        response.setDownloadListResponse(downloadListResponse);
 
-        return new ResponseEntity<CommonResponse>(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping(value="/app")
     public ResponseEntity getAppsInfo() {
 
-        CommonResponse response;
+        CommonResponse commonResponse = new CommonResponse();
         AllAppResponse appResponse;
+        Response response = new Response();
 
         appResponse = appService.getAllApps();
 
-        response = appResponse;
-        return new ResponseEntity<CommonResponse>(response, HttpStatus.OK);
+//        commonResponse = appResponse;
+        response.setCommonResponse(commonResponse);
+        response.setAllAppResponse(appResponse);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class AppDownloadResponse extends CommonResponse {
+public class AppDownloadResponse {
     @JsonProperty("data")
     private AppVersion appVersion;
     // appCategory
