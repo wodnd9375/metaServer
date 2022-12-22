@@ -2,7 +2,6 @@ package com.kt.geniestore.meta.apkmanagement.service;
 
 import com.kt.geniestore.meta.apkmanagement.Exception.DuplicateAppException;
 import com.kt.geniestore.meta.apkmanagement.common.response.AllAppResponse;
-import com.kt.geniestore.meta.apkmanagement.common.response.AppDownloadResponse;
 import com.kt.geniestore.meta.apkmanagement.common.response.AppsResponse;
 import com.kt.geniestore.meta.apkmanagement.dto.AppDTO;
 import com.kt.geniestore.meta.apkmanagement.entity.*;
@@ -52,14 +51,13 @@ public class AppService {
     private static final Logger logger = LoggerFactory.getLogger(AppService.class);
 
 
-    public AllAppResponse getAllApps() {
+    public List<AppsResponse> getAllApps() {
         AllAppResponse AllAppResponse = new AllAppResponse();
         List<AppsResponse> responseList = new ArrayList<>();
         List<App> apps = appRepository.findAll();
 
         for(App app : apps) {
-            // todo : return 최신 버전
-            AppVersion appVersion = appVersionRepository.findByApp(app).get(0);
+            List<AppVersion> appVersion = appVersionRepository.findAll();
             Developer developer = developerRepository.findByApp(app);
             List<AppCategoryMap> appCategoryMaps = appCategoryMapRepository.findByApp(app);
 
@@ -81,9 +79,9 @@ public class AppService {
             responseList.add(appResponse);
         }
 
-        AllAppResponse.setApps(responseList);
+//        AllAppResponse.setData(responseList);
 
-        return AllAppResponse;
+        return responseList;
     }
 
     public List<ServerInfo> discoveryClient () {

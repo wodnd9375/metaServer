@@ -1,9 +1,6 @@
 package com.kt.geniestore.meta.apkmanagement.controller;
 
-import com.kt.geniestore.meta.apkmanagement.common.response.AllAppResponse;
-import com.kt.geniestore.meta.apkmanagement.common.response.CommonResponse;
-import com.kt.geniestore.meta.apkmanagement.common.response.DownloadListResponse;
-import com.kt.geniestore.meta.apkmanagement.common.response.Response;
+import com.kt.geniestore.meta.apkmanagement.common.response.*;
 import com.kt.geniestore.meta.apkmanagement.dto.AppDTO;
 import com.kt.geniestore.meta.apkmanagement.entity.DeveloperInfo;
 import com.kt.geniestore.meta.apkmanagement.service.AppService;
@@ -62,22 +59,24 @@ public class AppRestController {
         Response response  = new Response();
 
         serverInfo = appService.discoveryClient();
+        downloadListResponse.setCommonResponse(commonResponse);
         downloadListResponse.setServerInfo(serverInfo);
-        response.setCommonResponse(commonResponse);
-        response.setDownloadListResponse(downloadListResponse);
 
-        return new ResponseEntity<>(response, HttpStatus.OK);
+//        response.setCommonResponse(commonResponse);
+//        response.setDownloadListResponse(downloadListResponse);
+
+        return new ResponseEntity<>(downloadListResponse, HttpStatus.OK);
     }
 
     @GetMapping(value="/app")
     public ResponseEntity getAppsInfo() {
 
         CommonResponse commonResponse = new CommonResponse();
-        AllAppResponse appResponse;
+//        AllAppResponse appResponse;
         Response response = new Response();
+//        appResponse = appService.getAllApps();
 
-        appResponse = appService.getAllApps();
-
+        List<AppsResponse> appResponse = appService.getAllApps();
 //        commonResponse = appResponse;
         response.setCommonResponse(commonResponse);
         response.setAllAppResponse(appResponse);
