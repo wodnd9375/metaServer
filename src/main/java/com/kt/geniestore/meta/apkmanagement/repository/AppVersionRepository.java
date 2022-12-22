@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface AppVersionRepository extends JpaRepository<AppVersion, Long> {
     List<AppVersion> findByApp(App app);
-
+    List<AppVersion> findAllByApp(App app);
 }

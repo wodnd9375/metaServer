@@ -57,7 +57,7 @@ public class AppService {
         List<App> apps = appRepository.findAll();
 
         for(App app : apps) {
-            List<AppVersion> appVersion = appVersionRepository.findAll();
+            List<AppVersion> appVersion = appVersionRepository.findAllByApp(app);
             Developer developer = developerRepository.findByApp(app);
             List<AppCategoryMap> appCategoryMaps = appCategoryMapRepository.findByApp(app);
 
